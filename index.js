@@ -72,6 +72,24 @@ function handleMixMidiNoteOn(message) {
 
 function handleMixMidiNoteOff(message) {
   console.log("note off: " + message[1]);
+  switch (message[1]) {
+  case MIDI_MIX_SOLO:
+    break;
+
+  case MIDI_MIX_BANK_LEFT:
+    break;
+
+  case MIDI_MIX_BANK_RIGHT:
+    break;
+
+  default:
+    if (message[1] >= 0x1 && message[1] <= 0x18) {
+      let column = Math.round((message[1] - 1) / 3);
+      let fn = (message[1] - 1) % 3;
+      console.log("column: " + column + " fn: " + fn);
+    }
+    break;
+  }
 }
 
 function handleMixMidiCC(message) {
