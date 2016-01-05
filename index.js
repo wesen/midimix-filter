@@ -84,9 +84,6 @@ function sendButtonStatus(row, status) {
 function handleMixMidiNoteOn(message) {
   console.log("note on: " + message[1]);
   switch (message[1]) {
-  case MIDI_MIX_SOLO:
-    break;
-
   case MIDI_MIX_BANK_LEFT:
     if (currentBank > 0) {
       currentBank--;
@@ -101,6 +98,10 @@ function handleMixMidiNoteOn(message) {
       console.log("switchting to next bank: " + currentBank);
     }
     setSingleButton(MIDI_MIX_MUTE_ROW, currentBank);
+    break;
+
+  case MIDI_MIX_SOLO:
+    mixSoloPressed = true;
     break;
 
   default:
@@ -138,6 +139,7 @@ function handleMixMidiNoteOff(message) {
   console.log("note off: " + message[1]);
   switch (message[1]) {
   case MIDI_MIX_SOLO:
+    mixSoloPressed = false;
     break;
 
   case MIDI_MIX_BANK_LEFT:
@@ -182,7 +184,11 @@ function handleMixMidiNoteOff(message) {
 
 function handleMixMidiCC(message) {
   // forward to the current channel
-  vOutput.sendMessage([MIDI_CC | currentBank, message[1], message[2]]);
+  if (mixSoloPressed) {
+    vOutput.sendMessage([MIDI_CC | currentBank, message[1] + 64, message[2]]);
+  } else {
+    vOutput.sendMessage([MIDI_CC | currentBank, message[1], message[2]]);
+  }
 }
 
 //------------------------------------------------------------------------------
