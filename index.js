@@ -26,12 +26,12 @@ function closeMidiPorts() {
   vOutput.closePort();
 }
 
-function getMidiMixPort(input) {
+function findMidiPort(input, inputName) {
   let cnt = input.getPortCount();
-  for (var i = 0; i < cnt; i++) {
+  for (let i = 0; i < cnt; i++) {
     let name = input.getPortName(i);
-    console.log("midi port " + i + ": " + name);
-    if (name === "MIDI Mix") {
+    console.log("midi port " + i + ": " + name + " inputName: " + inputName);
+    if (name === inputName) {
       return i;
     }
   }
@@ -119,8 +119,8 @@ function setupMidiFilter(input, handleMidiNoteOn, handleMidiNoteOff, handleMidiC
 }
 
 function setupMidiMixFilter() {
-  let midiMixInputPortIdx = getMidiMixPort(input);
-  let midiMixOutputPortIdx = getMidiMixPort(output);
+  let midiMixInputPortIdx = findMidiPort(input, "MIDI Mix");
+  let midiMixOutputPortIdx = findMidiPort(output, "MIDI Mix");
   if (midiMixInputPortIdx === undefined || midiMixOutputPortIdx === undefined) {
     console.log("Could not find MIDI mix");
     return false;
@@ -131,8 +131,21 @@ function setupMidiMixFilter() {
 
   input.openPort(midiMixInputPortIdx);
   output.openPort(midiMixOutputPortIdx);
-  vInput.openVirtualPort("MIDIMix Filter");
-  vOutput.openVirtualPort("MIDIMix Filter");
+
+  // disable the virtual port functionality for now, as it is not practical to debug
+  if (false) {
+    vInput.openVirtualPort("MIDIMix Filter");
+    vOutput.openVirtualPort("MIDIMix Filter");
+  } else {
+    let reaktorInputPortIdx = findMidiPort(vInput, "Reaktor 6 Virtual Output");
+    let reaktorOutputPortIdx = findMidiPort(vOutput, "Reaktor 6 Virtual Input");
+    if (reaktorInputPortIdx === undefined || reaktorOutputPortIdx === undefined) {
+      console.log("Could not find Reaktor virtual port");
+      return false;
+    }
+    vInput.openPort(reaktorInputPortIdx);
+    vOutput.openPort(reaktorOutputPortIdx);
+  }
 
   return true;
 }
