@@ -114,7 +114,7 @@ function handleVirtualMidiCC(message) {
 
 //------------------------------------------------------------------------------
 function setupMidiFilter(input, handleMidiNoteOn, handleMidiNoteOff, handleMidiCC) {
-  input.on('message', function (deltaTime, message) {
+  input.on('message', (deltaTime, message) => {
     switch (message[0] & 0xF0) {
     case MIDI_NOTE_ON:
       handleMidiNoteOn(message);
@@ -169,13 +169,13 @@ function setupMidiMixFilter() {
 }
 
 
-app.on('ready', function () {
+app.on('ready', () => {
   if (!setupMidiMixFilter()) {
     app.quit();
   }
 });
 
-app.on('quit', function () {
+app.on('quit', () => {
   console.log("quit");
   closeMidiPorts();
 });
