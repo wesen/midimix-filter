@@ -17,6 +17,10 @@ const MIDI_MIX_SOLO = 0x1B;
 const MIDI_MIX_BANK_LEFT = 0x19;
 const MIDI_MIX_BANK_RIGHT = 0x1A;
 
+const MIDI_MIX_MUTE_CC_START = 0;
+const MIDI_MIX_REC_CC_START = 8;
+const MIDI_MIX_SOLO_CC_START = 32;
+
 const MIDI_MIX_MUTE_ROW = 0;
 const MIDI_MIX_SOLO_ROW = 1;
 const MIDI_MIX_REC_ROW = 2;
@@ -93,12 +97,12 @@ function handleMixMidiNoteOn(message) {
 
       switch (fn) {
       case MIDI_MIX_MUTE_ROW:
-        vOutput.sendMessage([MIDI_CC | currentBank, 80 + column, 127]);
+        vOutput.sendMessage([MIDI_CC | currentBank, MIDI_MIX_MUTE_CC_START + column, 127]);
         muteButtonStatus[column] = 1;
         break;
 
       case MIDI_MIX_REC_ROW:
-        vOutput.sendMessage([MIDI_CC | currentBank, 90 + column, 127]);
+        vOutput.sendMessage([MIDI_CC | currentBank, MIDI_MIX_REC_CC_START + column, 127]);
         recButtonStatus[column] = 1;
         break;
 
@@ -119,10 +123,12 @@ function handleMixMidiNoteOff(message) {
 
   case MIDI_MIX_BANK_LEFT:
     sendButtonStatus(MIDI_MIX_MUTE_ROW, muteButtonStatus);
+    sendButtonStatus(MIDI_MIX_REC_ROW, recButtonStatus);
     break;
 
   case MIDI_MIX_BANK_RIGHT:
     sendButtonStatus(MIDI_MIX_MUTE_ROW, muteButtonStatus);
+    sendButtonStatus(MIDI_MIX_REC_ROW, recButtonStatus);
     break;
 
   default:
@@ -134,12 +140,12 @@ function handleMixMidiNoteOff(message) {
       switch (fn) {
       case MIDI_MIX_MUTE_ROW:
         muteButtonStatus[column] = 0;
-        vOutput.sendMessage([MIDI_CC | currentBank, 80 + column, 0]);
+        vOutput.sendMessage([MIDI_CC | currentBank, MIDI_MIX_MUTE_CC_START + column, 0]);
         break;
 
       case MIDI_MIX_REC_ROW:
         recButtonStatus[column] = 0;
-        vOutput.sendMessage([MIDI_CC | currentBank, 90 + column, 0]);
+        vOutput.sendMessage([MIDI_CC | currentBank, MIDI_MIX_REC_CC_START + column, 0]);
         break;
 
       default:
@@ -166,20 +172,6 @@ function handleVirtualMidiNoteOn(message) {
     let column = Math.round((message[1] - 1) / 3);
     let fn = (message[1] - 1) % 3;
     console.log("column: " + column + " fn: " + fn);
-
-    output.sendMessage([MIDI_NOTE_ON, message[1], message[2]]);
-    switch (fn) {
-    case MIDI_MIX_MUTE_ROW:
-      muteButtonStatus[column] = message[2] === 0 ? 0 : 1;
-      break;
-
-    case MIDI_MIX_REC_ROW:
-      recButtonStatus[column] = message[2] === 0 ? 0 : 1;
-      break;
-
-    default:
-      break;
-    }
   }
 }
 
@@ -196,13 +188,15 @@ function handleVirtualMidiCC(message) {
   console.log("midi cc on channel: " + channel);
   if (channel === currentBank) {
     // forward to the current channel
-    if (message[1] >= 80 && message[1] <= 88) {
+    if (message[1] >= MIDI_MIX_MUTE_CC_START && message[1] <= (MIDI_MIX_MUTE_CC_START + 8)) {
       // map to mute buttons
-      let col = message[1] - 80;
-      output.sendMessage([MIDI_NOTE_ON, col * 3 + 1, message[2] >= 64 ? 127 : 0]);
-    } else if (message[1] >= 90 && message[1] <= 98) {
-      let col = message[1] - 90;
-      output.sendMessage([MIDI_NOTE_ON, col * 3 + 3, message[2] >= 64 ? 127 : 0]);
+      let col = message[1] - MIDI_MIX_MUTE_CC_START;
+      muteButtonStatus[col] = message[2] >= 64 ? 1 : 0;
+      output.sendMessage([MIDI_NOTE_ON, col * 3 + MIDI_MIX_MUTE_ROW + 1, message[2] >= 64 ? 127 : 0]);
+    } else if (message[1] >= MIDI_MIX_REC_CC_START && message[1] <= (MIDI_MIX_REC_CC_START + 8)) {
+      let col = message[1] - MIDI_MIX_REC_CC_START;
+      recButtonStatus = message[2] >= 64 ? 1 : 0;
+      output.sendMessage([MIDI_NOTE_ON, col * 3 + MIDI_MIX_REC_ROW + 1, message[2] >= 64 ? 127 : 0]);
     } else {
       output.sendMessage([MIDI_CC, message[1], message[2]]);
     }
