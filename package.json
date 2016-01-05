@@ -1,0 +1,27 @@
+{
+  "name": "midimix-filter",
+  "version": "1.0.0",
+  "description": "Input filter to enable multichannel/multibank for the akai midimix controller",
+  "main": "index.js",
+  "dependencies": {
+    "midi": "^0.9.4",
+    "electron-prebuilt": "^0.36.2"
+  },
+  "devDependencies": {
+    "electron-prebuilt": "^0.36.2"
+  },
+  "scripts": {
+    "start": "electron index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/wesen/midimix-filter.git"
+  },
+  "author": "Manuel Odendahl",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/wesen/midimix-filter/issues"
+  },
+  "homepage": "https://github.com/wesen/midimix-filter#readme"
+}
