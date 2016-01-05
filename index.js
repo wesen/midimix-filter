@@ -62,7 +62,7 @@ function handleMixMidiNoteOn(message) {
 
   default:
     if (message[1] >= 0x1 && message[1] <= 0x18) {
-      let column = (message[1] - 1) / 3;
+      let column = Math.round((message[1] - 1) / 3);
       let fn = (message[1] - 1) % 3;
       console.log("column: " + column + " fn: " + fn);
     }
