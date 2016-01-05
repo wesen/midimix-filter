@@ -91,14 +91,14 @@ function handleMixMidiNoteOn(message) {
       let fn = (message[1] - 1) % 3;
       console.log("column: " + column + " fn: " + fn);
 
-      vOutput.sendMessage([MIDI_NOTE_ON | currentBank, message[1], message[2]]);
-      output.sendMessage([MIDI_NOTE_ON, message[1], message[2]]);
       switch (fn) {
       case MIDI_MIX_MUTE_ROW:
+        vOutput.sendMessage([MIDI_CC | currentBank, 80 + column, 127]);
         muteButtonStatus[column] = 1;
         break;
 
       case MIDI_MIX_REC_ROW:
+        vOutput.sendMessage([MIDI_CC | currentBank, 90 + column, 127]);
         recButtonStatus[column] = 1;
         break;
 
@@ -131,15 +131,15 @@ function handleMixMidiNoteOff(message) {
       let fn = (message[1] - 1) % 3;
       console.log("column: " + column + " fn: " + fn);
 
-      vOutput.sendMessage([MIDI_NOTE_OFF | currentBank, message[1], message[2]]);
-      output.sendMessage([MIDI_NOTE_ON, message[1], 0]);
       switch (fn) {
       case MIDI_MIX_MUTE_ROW:
         muteButtonStatus[column] = 0;
+        vOutput.sendMessage([MIDI_CC | currentBank, 80 + column, 0]);
         break;
 
       case MIDI_MIX_REC_ROW:
         recButtonStatus[column] = 0;
+        vOutput.sendMessage([MIDI_CC | currentBank, 90 + column, 0]);
         break;
 
       default:
@@ -188,26 +188,7 @@ function handleVirtualMidiNoteOff(message) {
     return;
   }
 
-  if (message[1] >= 0x1 && message[1] <= 0x18) {
-    let column = Math.round((message[1] - 1) / 3);
-    let fn = (message[1] - 1) % 3;
-    console.log("column: " + column + " fn: " + fn);
-
-    output.sendMessage([MIDI_NOTE_ON, message[1], 0]);
-    switch (fn) {
-    case MIDI_MIX_MUTE_ROW:
-      muteButtonStatus[column] = 0;
-      break;
-
-    case MIDI_MIX_REC_ROW:
-      recButtonStatus[column] = 0;
-      break;
-
-    default:
-      break;
-    }
-  }
-
+  // ignore notes
 }
 
 function handleVirtualMidiCC(message) {
@@ -215,7 +196,16 @@ function handleVirtualMidiCC(message) {
   console.log("midi cc on channel: " + channel);
   if (channel === currentBank) {
     // forward to the current channel
-    output.sendMessage([MIDI_CC, message[1], message[2]]);
+    if (message[1] >= 80 && message[1] <= 88) {
+      // map to mute buttons
+      let col = message[1] - 80;
+      output.sendMessage([MIDI_NOTE_ON, col * 3 + 1, message[2] >= 64 ? 127 : 0]);
+    } else if (message[1] >= 90 && message[1] <= 98) {
+      let col = message[1] - 90;
+      output.sendMessage([MIDI_NOTE_ON, col * 3 + 3, message[2] >= 64 ? 127 : 0]);
+    } else {
+      output.sendMessage([MIDI_CC, message[1], message[2]]);
+    }
   }
 }
 
