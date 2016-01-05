@@ -4,6 +4,13 @@ This program adds multiple banks and other funky features for MIDImix.
 This is pretty much for my own use, so that I can use the MIDIMix outside
 of ableton and control multiple synths.
 
+## Installation
+
+Run `npm install`, followed by `node_modules/.bin/electron-rebuild` to link the
+native MIDI library.
+This does not really have a GUI yet, but it might be planned for the future,
+hence the electron wrapper.
+
 ## Usage and functionality
 
 Run the program using `npm start`.
