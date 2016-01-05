@@ -82,12 +82,10 @@ function sendButtonStatus(row, status) {
 
 //------------------------------------------------------------------------------
 function handleMixMidiNoteOn(message) {
-  console.log("note on: " + message[1]);
   switch (message[1]) {
   case MIDI_MIX_BANK_LEFT:
     if (currentBank > 0) {
       currentBank--;
-      console.log("switching to previous bank: " + currentBank);
     }
     setSingleButton(MIDI_MIX_MUTE_ROW, currentBank);
     break;
@@ -95,7 +93,6 @@ function handleMixMidiNoteOn(message) {
   case MIDI_MIX_BANK_RIGHT:
     if (currentBank < 0xF) {
       currentBank++;
-      console.log("switchting to next bank: " + currentBank);
     }
     setSingleButton(MIDI_MIX_MUTE_ROW, currentBank);
     break;
@@ -108,7 +105,6 @@ function handleMixMidiNoteOn(message) {
     if (message[1] >= 0x1 && message[1] <= 0x18) {
       let column = Math.round((message[1] - 1) / 3);
       let fn = (message[1] - 1) % 3;
-      console.log("column: " + column + " fn: " + fn);
 
       switch (fn) {
       case MIDI_MIX_MUTE_ROW:
@@ -136,7 +132,6 @@ function handleMixMidiNoteOn(message) {
 }
 
 function handleMixMidiNoteOff(message) {
-  console.log("note off: " + message[1]);
   switch (message[1]) {
   case MIDI_MIX_SOLO:
     mixSoloPressed = false;
@@ -156,7 +151,6 @@ function handleMixMidiNoteOff(message) {
     if (message[1] >= 0x1 && message[1] <= 0x18) {
       let column = Math.round((message[1] - 1) / 3);
       let fn = (message[1] - 1) % 3;
-      console.log("column: " + column + " fn: " + fn);
 
       switch (fn) {
       case MIDI_MIX_MUTE_ROW:
@@ -201,7 +195,6 @@ function handleVirtualMidiNoteOn(message) {
   if (message[1] >= 0x1 && message[1] <= 0x18) {
     let column = Math.round((message[1] - 1) / 3);
     let fn = (message[1] - 1) % 3;
-    console.log("column: " + column + " fn: " + fn);
   }
 }
 
@@ -215,7 +208,6 @@ function handleVirtualMidiNoteOff(message) {
 
 function handleVirtualMidiCC(message) {
   let channel = message[0] & 0xF;
-  console.log("midi cc on channel: " + channel);
   if (channel === currentBank) {
     // forward to the current channel
     if (message[1] >= MIDI_MIX_MUTE_CC_START && message[1] <= (MIDI_MIX_MUTE_CC_START + 8)) {
@@ -305,6 +297,5 @@ app.on('ready', () => {
 });
 
 app.on('quit', () => {
-  console.log("quit");
   closeMidiPorts();
 });
