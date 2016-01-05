@@ -26,8 +26,22 @@ const MIDI_MIX_SOLO_ROW = 1;
 const MIDI_MIX_REC_ROW = 2;
 
 let currentBank = 0;
-let muteButtonStatus = [0, 0, 0, 0, 0, 0, 0, 0];
-let recButtonStatus = [0, 0, 0, 0, 0, 0, 0, 0];
+let muteButtonStatus = [];
+let soloButtonStatus = [];
+let recButtonStatus = [];
+
+let mixSoloPressed = false;
+
+for (let i = 0; i < 16; i++) {
+  muteButtonStatus[i] = [];
+  recButtonStatus[i] = [];
+  soloButtonStatus[i] = [];
+  for (let j = 0; j < 8; j++) {
+    muteButtonStatus[i][j] = 0;
+    soloButtonStatus[i][j] = 0;
+    recButtonStatus[i][j] = 0;
+  }
+}
 
 function closeMidiPorts() {
   input.closePort();
@@ -98,12 +112,17 @@ function handleMixMidiNoteOn(message) {
       switch (fn) {
       case MIDI_MIX_MUTE_ROW:
         vOutput.sendMessage([MIDI_CC | currentBank, MIDI_MIX_MUTE_CC_START + column, 127]);
-        muteButtonStatus[column] = 1;
+        muteButtonStatus[currentBank][column] = 1;
         break;
 
       case MIDI_MIX_REC_ROW:
         vOutput.sendMessage([MIDI_CC | currentBank, MIDI_MIX_REC_CC_START + column, 127]);
-        recButtonStatus[column] = 1;
+        recButtonStatus[currentBank][column] = 1;
+        break;
+
+      case MIDI_MIX_SOLO_ROW:
+        vOutput.sendMessage([MIDI_CC | currentBank, MIDI_MIX_SOLO_CC_START + column, 127]);
+        soloButtonStatus[currentBank][column] = 1;
         break;
 
       default:
@@ -122,13 +141,13 @@ function handleMixMidiNoteOff(message) {
     break;
 
   case MIDI_MIX_BANK_LEFT:
-    sendButtonStatus(MIDI_MIX_MUTE_ROW, muteButtonStatus);
-    sendButtonStatus(MIDI_MIX_REC_ROW, recButtonStatus);
+    sendButtonStatus(MIDI_MIX_MUTE_ROW, muteButtonStatus[currentBank]);
+    sendButtonStatus(MIDI_MIX_REC_ROW, recButtonStatus[currentBank]);
     break;
 
   case MIDI_MIX_BANK_RIGHT:
-    sendButtonStatus(MIDI_MIX_MUTE_ROW, muteButtonStatus);
-    sendButtonStatus(MIDI_MIX_REC_ROW, recButtonStatus);
+    sendButtonStatus(MIDI_MIX_MUTE_ROW, muteButtonStatus[currentBank]);
+    sendButtonStatus(MIDI_MIX_REC_ROW, recButtonStatus[currentBank]);
     break;
 
   default:
@@ -139,13 +158,18 @@ function handleMixMidiNoteOff(message) {
 
       switch (fn) {
       case MIDI_MIX_MUTE_ROW:
-        muteButtonStatus[column] = 0;
+        muteButtonStatus[currentBank][column] = 0;
         vOutput.sendMessage([MIDI_CC | currentBank, MIDI_MIX_MUTE_CC_START + column, 0]);
         break;
 
       case MIDI_MIX_REC_ROW:
-        recButtonStatus[column] = 0;
+        recButtonStatus[currentBank][column] = 0;
         vOutput.sendMessage([MIDI_CC | currentBank, MIDI_MIX_REC_CC_START + column, 0]);
+        break;
+
+      case MIDI_MIX_SOLO_ROW:
+        soloButtonStatus[currentBank][column] = 0;
+        vOutput.sendMessage([MIDI_CC | currentBank, MIDI_MIX_SOLO_CC_START + column, 0]);
         break;
 
       default:
@@ -191,14 +215,18 @@ function handleVirtualMidiCC(message) {
     if (message[1] >= MIDI_MIX_MUTE_CC_START && message[1] <= (MIDI_MIX_MUTE_CC_START + 8)) {
       // map to mute buttons
       let col = message[1] - MIDI_MIX_MUTE_CC_START;
-      muteButtonStatus[col] = message[2] >= 64 ? 1 : 0;
+      muteButtonStatus[currentBank][col] = message[2] >= 64 ? 1 : 0;
       output.sendMessage([MIDI_NOTE_ON, col * 3 + MIDI_MIX_MUTE_ROW + 1, message[2] >= 64 ? 127 : 0]);
     } else if (message[1] >= MIDI_MIX_REC_CC_START && message[1] <= (MIDI_MIX_REC_CC_START + 8)) {
       let col = message[1] - MIDI_MIX_REC_CC_START;
-      recButtonStatus = message[2] >= 64 ? 1 : 0;
+      recButtonStatus[currentBank][col] = message[2] >= 64 ? 1 : 0;
       output.sendMessage([MIDI_NOTE_ON, col * 3 + MIDI_MIX_REC_ROW + 1, message[2] >= 64 ? 127 : 0]);
+    } else if (message[1] >= MIDI_MIX_SOLO_CC_START && message[1] <= (MIDI_MIX_SOLO_CC_START + 8)) {
+      let col = message[1] - MIDI_MIX_SOLO_CC_START;
+      soloButtonStatus[currentBank][col] = message[2] >= 64 ? 1 : 0;
+      output.sendMessage([MIDI_NOTE_ON, col * 3 + MIDI_MIX_SOLO_ROW + 1, message[2] >= 64 ? 127 : 0]);
     } else {
-      output.sendMessage([MIDI_CC, message[1], message[2]]);
+      // no need to forward ccs to midi mix
     }
   }
 }
@@ -255,8 +283,9 @@ function setupMidiMixFilter() {
     vInput.openPort(reaktorInputPortIdx);
     vOutput.openPort(reaktorOutputPortIdx);
 
-    sendButtonStatus(0, muteButtonStatus);
-    sendButtonStatus(2, recButtonStatus);
+    sendButtonStatus(MIDI_MIX_MUTE_ROW, muteButtonStatus[currentBank]);
+    sendButtonStatus(MIDI_MIX_SOLO_ROW, soloButtonStatus[currentBank]);
+    sendButtonStatus(MIDI_MIX_REC_ROW, recButtonStatus[currentBank]);
   }
 
   return true;
