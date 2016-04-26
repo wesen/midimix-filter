@@ -12,35 +12,20 @@ const vOutput = new midi.output();
 const MIDI_NOTE_ON = 0x90;
 const MIDI_NOTE_OFF = 0x80;
 const MIDI_CC = 0xB0;
+const MIDI_SYSEX_START = 0xF0;
+const MIDI_SYSEX_STOP = 0xF7;
 
-const MIDI_MIX_SOLO = 0x1B;
-const MIDI_MIX_BANK_LEFT = 0x19;
-const MIDI_MIX_BANK_RIGHT = 0x1A;
+const MIDI_TE_ID = [0x00, 0x20, 0x76];
 
-const MIDI_MIX_MUTE_CC_START = 0;
-const MIDI_MIX_REC_CC_START = 8;
-const MIDI_MIX_SOLO_CC_START = 32;
+const MIDI_ID_SEQUENCE = [MIDI_SYSEX_START, 0x7e, 0x7f, 0x06, 0x01, MIDI_SYSEX_STOP];
 
-const MIDI_MIX_MUTE_ROW = 0;
-const MIDI_MIX_SOLO_ROW = 1;
-const MIDI_MIX_REC_ROW = 2;
+const OP1_ENABLE_SEQUENCE = [0x00, 0x01, 0x02];
+const OP1_DISABLE_SEQUENCE = [0x00, 0x01, 0x00];
+const OP1_TEXT_START_SEQUENCE = [0x00, 0x03];
+const OP1_TEXT_COLOR_START_SEQUENCE = [0x00, 0x04];
 
-let currentBank = 0;
-let muteButtonStatus = [];
-let soloButtonStatus = [];
-let recButtonStatus = [];
-
-let mixSoloPressed = false;
-
-for (let i = 0; i < 16; i++) {
-  muteButtonStatus[i] = [];
-  recButtonStatus[i] = [];
-  soloButtonStatus[i] = [];
-  for (let j = 0; j < 8; j++) {
-    muteButtonStatus[i][j] = 0;
-    soloButtonStatus[i][j] = 0;
-    recButtonStatus[i][j] = 0;
-  }
+function sendOp1Sequence(output, sequence) {
+  return output.sendMessage([MIDI_SYSEX_START].concat(MIDI_TE_ID).concat(sequence).concat([MIDI_SYSEX_STOP]));
 }
 
 function closeMidiPorts() {
@@ -253,47 +238,68 @@ function setupMidiFilter(input, handleMidiNoteOn, handleMidiNoteOff, handleMidiC
   });
 }
 
-function setupMidiMixFilter() {
-  let midiMixInputPortIdx = findMidiPort(input, "MIDI Mix");
-  let midiMixOutputPortIdx = findMidiPort(output, "MIDI Mix");
-  if (midiMixInputPortIdx === undefined || midiMixOutputPortIdx === undefined) {
-    console.log("Could not find MIDI mix");
+function sendOp1Text(output, text) {
+  var list = [];
+  list.push(text.length);
+  for (var i = 0; i < text.length; i++) {
+    list.push(text.charCodeAt(i));
+  }
+  return sendOp1Sequence(output, OP1_TEXT_START_SEQUENCE.concat(list));
+}
+
+function sendOp1Colors(output, colors) {
+  var list = [];
+  list.push(colors.length);
+  for (var i = 0; i < colors.length; i++) {
+    list = list.concat(colors[i]);
+  }
+  return sendOp1Sequence(output, OP1_TEXT_COLOR_START_SEQUENCE.concat(list));
+}
+
+function setupOp1() {
+  let op1InputPortIdx = findMidiPort(input, "OP-1 Midi Device");
+  let op1OutputPortIdx = findMidiPort(output, "OP-1 Midi Device");
+  if (op1InputPortIdx === undefined || op1OutputPortIdx === undefined) {
+    console.log("Could not find OP1");
     return false;
   }
 
-  setupMidiFilter(input, handleMixMidiNoteOn, handleMixMidiNoteOff, handleMixMidiCC);
-  setupMidiFilter(vInput, handleVirtualMidiNoteOn, handleVirtualMidiNoteOff, handleVirtualMidiCC);
+  //setupMidiFilter(input, handleMixMidiNoteOn, handleMixMidiNoteOff, handleMixMidiCC);
+  //setupMidiFilter(vInput, handleVirtualMidiNoteOn, handleVirtualMidiNoteOff, handleVirtualMidiCC);
 
-  input.openPort(midiMixInputPortIdx);
-  output.openPort(midiMixOutputPortIdx);
+  input.openPort(op1InputPortIdx);
+  output.openPort(op1OutputPortIdx);
 
-  // disable the virtual port functionality for now, as it is not practical to debug
-  if (false) {
-    vInput.openVirtualPort("MIDIMix Filter");
-    vOutput.openVirtualPort("MIDIMix Filter");
-  } else {
-    let reaktorInputPortIdx = findMidiPort(vInput, "Reaktor 6 Virtual Output");
-    let reaktorOutputPortIdx = findMidiPort(vOutput, "Reaktor 6 Virtual Input");
-    if (reaktorInputPortIdx === undefined || reaktorOutputPortIdx === undefined) {
-      console.log("Could not find Reaktor virtual port");
-      return false;
-    }
-    vInput.openPort(reaktorInputPortIdx);
-    vOutput.openPort(reaktorOutputPortIdx);
+  sendOp1Sequence(output, OP1_ENABLE_SEQUENCE);
+  //sendOp1Sequence(output, OP1_DISABLE_SEQUENCE);
+  //output.sendMessage(MIDI_ID_SEQUENCE);
+  sendOp1Text(output, "hello\rvirginia");
 
-    sendButtonStatus(MIDI_MIX_MUTE_ROW, muteButtonStatus[currentBank]);
-    sendButtonStatus(MIDI_MIX_SOLO_ROW, soloButtonStatus[currentBank]);
-    sendButtonStatus(MIDI_MIX_REC_ROW, recButtonStatus[currentBank]);
-  }
+
+  sendOp1Colors(output, [[127,0,0],[0,127,0],[0,0,127]]);
 
   return true;
 }
 
 
+var i = 0;
+var dir = 3;
+function updateColors() {
+  i = Math.max(i, 0);
+  i = Math.min(i, 127);
+  sendOp1Colors(output, [[i, 0, 0], [0, i, 0], [0, 0, i]]);
+  sendOp1Text(output, "value\r"+i);
+  i += dir;
+  if (i >= 127 || i <= 0) { dir *= -1; }
+  setTimeout(updateColors, 50);
+}
+
 app.on('ready', () => {
-  if (!setupMidiMixFilter()) {
+  if (!setupOp1()) {
     app.quit();
   }
+  //setTimeout(updateColors, 50);
+
 });
 
 app.on('quit', () => {
